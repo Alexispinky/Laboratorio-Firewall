@@ -1,0 +1,126 @@
+# Laboratorio de segmentación y firewall - Bloque 1: topología base
+# Dos sedes (A y B), cada una con zonas LAN y DMZ y un firewall Linux.
+# Aislamiento: las redes NO usan "internal: true" (Docker bloquea el enrutamiento
+# entre zonas a través de un firewall en contenedor). En su lugar se desactiva el
+# NAT hacia el exterior (enable_ip_masquerade) y se eliminan las rutas por defecto
+# de los firewalls y del atacante, así el laboratorio no sale a internet.
+name: lab-segmentacion
+
+services:
+  # ---------- SEDE A ----------
+  fw-a:
+    build: ./images/firewall
+    container_name: fw-a
+    hostname: fw-a
+    cap_add: [NET_ADMIN]
+    command: ["sh", "-c", "while ip route del default 2>/dev/null; do :; done; exec sleep infinity"]
+    sysctls:
+      net.ipv4.ip_forward: 1
+    networks:
+      wan:
+        ipv4_address: 203.0.113.10
+      site_a_lan:
+        ipv4_address: 10.10.1.254
+      site_a_dmz:
+        ipv4_address: 10.10.2.254
+
+  client-a:
+    image: alpine:3.20
+    container_name: client-a
+    hostname: client-a
+    cap_add: [NET_ADMIN]
+    command: ["sh", "-c", "ip route replace default via 10.10.1.254 && exec sleep infinity"]
+    networks:
+      site_a_lan:
+        ipv4_address: 10.10.1.10
+
+  web-a:
+    image: nginx:alpine
+    container_name: web-a
+    hostname: web-a
+    cap_add: [NET_ADMIN]
+    entrypoint: ["sh", "-c", "ip route replace default via 10.10.2.254 && exec nginx -g 'daemon off;'"]
+    networks:
+      site_a_dmz:
+        ipv4_address: 10.10.2.10
+
+  # ---------- SEDE B ----------
+  fw-b:
+    build: ./images/firewall
+    container_name: fw-b
+    hostname: fw-b
+    cap_add: [NET_ADMIN]
+    command: ["sh", "-c", "while ip route del default 2>/dev/null; do :; done; exec sleep infinity"]
+    sysctls:
+      net.ipv4.ip_forward: 1
+    networks:
+      wan:
+        ipv4_address: 203.0.113.20
+      site_b_lan:
+        ipv4_address: 10.20.1.254
+      site_b_dmz:
+        ipv4_address: 10.20.2.254
+
+  client-b:
+    image: alpine:3.20
+    container_name: client-b
+    hostname: client-b
+    cap_add: [NET_ADMIN]
+    command: ["sh", "-c", "ip route replace default via 10.20.1.254 && exec sleep infinity"]
+    networks:
+      site_b_lan:
+        ipv4_address: 10.20.1.10
+
+  web-b:
+    image: nginx:alpine
+    container_name: web-b
+    hostname: web-b
+    cap_add: [NET_ADMIN]
+    entrypoint: ["sh", "-c", "ip route replace default via 10.20.2.254 && exec nginx -g 'daemon off;'"]
+    networks:
+      site_b_dmz:
+        ipv4_address: 10.20.2.10
+
+  # ---------- ATACANTE (en la WAN) ----------
+  attacker:
+    build: ./images/attacker
+    container_name: attacker
+    hostname: attacker
+    cap_add: [NET_ADMIN, NET_RAW]
+    command: ["sh", "-c", "while ip route del default 2>/dev/null; do :; done; exec sleep infinity"]
+    networks:
+      wan:
+        ipv4_address: 203.0.113.100
+
+networks:
+  # WAN simulada (rango de documentación TEST-NET-3, no enrutable)
+  wan:
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 203.0.113.0/24
+  site_a_lan:
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 10.10.1.0/24
+  site_a_dmz:
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 10.10.2.0/24
+  site_b_lan:
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 10.20.1.0/24
+  site_b_dmz:
+    driver_opts:
+      com.docker.network.bridge.enable_ip_masquerade: "false"
+    ipam:
+      config:
+        - subnet: 10.20.2.0/24

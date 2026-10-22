@@ -1,0 +1,6 @@
+# Secretos y material generado: nunca se suben al repositorio
+*.key
+*.pem
+*.psk
+secrets/
+evidence/raw/

@@ -1,0 +1,40 @@
+# Bloque 2 - Política de firewall de la Sede B (fw-b)
+# Las reglas usan direcciones IP y no nombres de interfaz (ethX), porque Docker
+# reasigna esos nombres cada vez que se recrean las redes.
+# Política por defecto: denegar (equivale a la "cleanup rule" de Check Point).
+# Limitación conocida: al filtrar por IP, un origen falsificado desde otra zona
+# no se distingue por interfaz; el anti-spoofing se aborda en un bloque posterior.
+
+define LAN = 10.20.1.0/24
+define DMZ = 10.20.2.0/24
+define WEB = 10.20.2.10
+
+# Borra solo nuestra tabla (no toca las reglas internas de Docker para DNS)
+table inet lab_filter
+delete table inet lab_filter
+
+table inet lab_filter {
+    chain input {
+        type filter hook input priority 0; policy drop;
+        ct state established,related counter accept
+        ct state invalid counter drop
+        iifname "lo" accept
+        # Diagnóstico: la LAN puede hacer ping al firewall
+        ip saddr $LAN icmp type echo-request counter accept
+        counter comment "descartado: input"
+    }
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+        ct state established,related counter accept
+        ct state invalid counter drop
+        # LAN -> servidor web de la DMZ: solo HTTP y HTTPS
+        ip saddr $LAN ip daddr $WEB tcp dport { 80, 443 } counter accept
+        # LAN -> DMZ: ping para diagnóstico
+        ip saddr $LAN ip daddr $DMZ icmp type echo-request counter accept
+        # Todo lo demás (DMZ -> LAN, WAN -> cualquiera, LAN -> WAN) se descarta
+        counter comment "descartado: forward"
+    }
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}

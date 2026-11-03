@@ -7,7 +7,7 @@
 ## Estado / Status
 
 - [x] Bloque 1: topología base (redes, contenedores, enrutamiento) / Base topology
-- [ ] Bloque 2: política del firewall con nftables (denegar por defecto) / Default-deny firewall policy
+- [x] Bloque 2: política del firewall con nftables (denegar por defecto) / Default-deny firewall policy
 - [ ] Bloque 3: túnel IPsec entre sedes / Site-to-site IPsec tunnel
 - [ ] Bloque 4: pruebas con nmap y evidencias / nmap validation and evidence
 
@@ -70,6 +70,17 @@ docker exec client-a ping -c 2 10.10.2.10               # LAN -> DMZ pasa por fw
 docker exec client-a ping -c 2 10.20.1.10               # otra sede: debe FALLAR hasta tener el túnel
 docker exec attacker ping -c 2 203.0.113.10             # atacante ve el firewall (OK)
 docker exec attacker ping -c 2 10.10.2.10               # atacante a la DMZ: debe FALLAR
+```
+
+## Verificación del bloque 2 / Block 2 checks
+
+```powershell
+docker exec client-a wget -q -O /dev/null -T 3 http://10.10.2.10                            # LAN -> web: sin salida = OK
+docker exec client-a wget -q -O /dev/null -T 3 http://10.10.2.10:8080                       # otro puerto: "timed out" = bloqueado
+docker exec web-a ping -c 2 -W 2 10.10.1.10                                                 # DMZ -> LAN: debe FALLAR
+docker exec attacker ping -c 2 -W 2 203.0.113.10                                            # WAN -> firewall: debe FALLAR
+docker exec attacker nmap -Pn -p 22,80,443,500 203.0.113.10                                 # puertos "filtered"
+docker exec fw-a nft list chain inet lab_filter input                                       # contadores de descartes
 ```
 
 ## Aprendizajes / Lessons learned

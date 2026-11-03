@@ -1,0 +1,5 @@
+# Finales de línea LF en todo el repositorio (importante al editar en Windows)
+* text=auto eol=lf
+*.nft text eol=lf
+*.yml text eol=lf
+Dockerfile text eol=lf

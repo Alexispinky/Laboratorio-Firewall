@@ -97,8 +97,54 @@ docker exec fw-a tcpdump -l -ni any -c 4 esp                              # en W
 docker exec fw-a nft list chain inet lab_filter input                     # contadores de IKE y ESP
 ```
 
+## Verificación del bloque 4 / Block 4 checks
+
+Preparación del atacante (una vez):
+
+```powershell
+docker exec attacker ip route add 10.10.1.0/24 via 203.0.113.10
+docker exec attacker ip route add 10.10.2.0/24 via 203.0.113.10
+docker exec attacker ip addr add 10.10.1.10/32 dev eth0       # se hace pasar por client-a
+docker exec attacker ip addr add 10.20.1.10/32 dev eth0       # se hace pasar por client-b
+```
+
+Prueba A, origen interno falsificado (terminal 1 captura, terminal 2 envía):
+
+```powershell
+docker exec fw-a tcpdump -l -ni any -c 4 "icmp and src host 10.10.1.10 and dst host 10.10.2.10"
+docker exec attacker ping -c 2 -W 1 -I 10.10.1.10 10.10.2.10
+```
+
+Prueba B, origen falsificado de la otra sede (hipótesis: lo frena el kernel por las políticas IPsec). Importante: el destino (10.10.1.10) no puede ser una dirección local del atacante; si lo es, el ping se resuelve dentro del propio atacante (TTL 64, sin pasar por el firewall) y la prueba no vale.
+
+```powershell
+docker exec attacker ip addr del 10.10.1.10/32 dev eth0       # quitar la dirección usada en la prueba A
+docker exec fw-a cat /proc/net/xfrm_stat
+# terminal 1:
+docker exec fw-a tcpdump -l -ni any -c 2 "icmp and src host 10.20.1.10"
+# terminal 2:
+docker exec attacker ping -c 2 -W 1 -I 10.20.1.10 10.10.1.10
+docker exec fw-a cat /proc/net/xfrm_stat
+docker exec attacker ip addr add 10.10.1.10/32 dev eth0 
+```
+
+Con `ANTISPOOF=1` en `.env` (y `docker compose up -d`), repetir la prueba A y revisar:
+
+```powershell
+docker exec fw-a nft list table inet lab_antispoof
+```
+
+Prueba C, IKE solo responde al par legítimo:
+
+```powershell
+docker exec fw-a nft list chain inet lab_filter input
+docker exec attacker nmap -sU -Pn -p 500,4500 203.0.113.10
+docker exec fw-a nft list chain inet lab_filter input
+```
+
 ## Limitaciones conocidas / Known limitations
-- Las reglas filtran por IP; un paquete sin cifrar con origen falsificado de la otra sede no se distingue de uno que llegó por el túnel. Se demuestra y se corrige en el bloque 4 (anti-spoofing).
+- Con solo reglas por IP, un paquete que llega por la WAN con origen falsificado de una red interna coincidía con las reglas de esa red (prueba A). Se corrige en el bloque 4 con anti-spoofing por interfaz.
+- El origen falsificado de la otra sede lo descarta el kernel mientras el túnel está activo: las políticas IPsec exigen cifrado y el contador XfrmInTmplMismatch sube (prueba B). Con el túnel caído no hay políticas instaladas; ese caso no está verificado.
 - Túnel con PSK por simplicidad; en producción se prefieren certificados.
 
 ## Aprendizajes / Lessons learned

@@ -3,8 +3,8 @@
 # reasigna esos nombres cada vez que se recrean las redes.
 # Política por defecto: denegar (equivale a la "cleanup rule" de Check Point).
 # Limitación conocida (se aborda en el bloque 4): al filtrar solo por IP, un
-# paquete sin cifrar con origen falsificado de la otra sede no se distingue
-# de uno que llegó por el túnel.
+# paquete que llega por la WAN con origen falsificado de una red interna
+# (por ejemplo, la LAN local) coincide con las reglas de esa LAN.
 
 define LAN   = 10.10.1.0/24
 define DMZ   = 10.10.2.0/24

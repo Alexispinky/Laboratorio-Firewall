@@ -1,0 +1,20 @@
+# Bloque 4 - Anti-spoofing de la Sede A (fw-a)
+# Se carga solo si ANTISPOOF=1 (ver .env). Los nombres de interfaz
+# (__WAN_IF__, __LAN_IF__, __DMZ_IF__) los detecta entrypoint-fw.sh a partir de
+# las IP del firewall, porque Docker cambia los nombres ethX al recrear las redes.
+# El tráfico descifrado del túnel llega por la interfaz WAN con origen de la
+# otra sede, por lo que no se ve afectado.
+
+table inet lab_antispoof
+delete table inet lab_antispoof
+
+table inet lab_antispoof {
+    chain prerouting {
+        type filter hook prerouting priority -150; policy accept;
+        # Desde la WAN nunca debe llegar tráfico con origen de nuestras redes internas
+        iifname "__WAN_IF__" ip saddr { 10.10.1.0/24, 10.10.2.0/24 } counter drop comment "spoofing: origen interno desde la WAN"
+        # Cada zona solo puede enviar con direcciones de su propia red
+        iifname "__LAN_IF__" ip saddr != 10.10.1.0/24 counter drop comment "spoofing: origen ajeno en la LAN"
+        iifname "__DMZ_IF__" ip saddr != 10.10.2.0/24 counter drop comment "spoofing: origen ajeno en la DMZ"
+    }
+}

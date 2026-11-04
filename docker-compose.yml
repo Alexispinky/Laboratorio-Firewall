@@ -1,4 +1,4 @@
-# Laboratorio de segmentación y firewall - Bloques 1 a 3: topología, política y túnel IPsec
+# Laboratorio de segmentación y firewall - Bloques 1 a 4: topología, política, túnel IPsec y anti-spoofing
 # Dos sedes (A y B), cada una con zonas LAN y DMZ y un firewall Linux.
 # Aislamiento: las redes NO usan "internal: true" (Docker bloquea el enrutamiento
 # entre zonas a través de un firewall en contenedor). En su lugar se desactiva el
@@ -15,8 +15,13 @@ services:
     cap_add: [NET_ADMIN]
     environment:
       - IPSEC_PSK=${IPSEC_PSK:?Define IPSEC_PSK en el archivo .env (ver .env.example)}
+      - ANTISPOOF=${ANTISPOOF:-0}
+      - FW_WAN_IP=203.0.113.10
+      - FW_LAN_IP=10.10.1.254
+      - FW_DMZ_IP=10.10.2.254
     volumes:
       - ./config/fw-a/lab.nft:/etc/nftables/lab.nft:ro
+      - ./config/fw-a/antispoof.nft:/etc/nftables/antispoof.nft:ro
       - ./config/fw-a/ipsec.conf:/etc/ipsec.conf:ro
       - ./config/entrypoint-fw.sh:/entrypoint.sh:ro
     command: ["sh", "/entrypoint.sh"]
@@ -58,8 +63,13 @@ services:
     cap_add: [NET_ADMIN]
     environment:
       - IPSEC_PSK=${IPSEC_PSK:?Define IPSEC_PSK en el archivo .env (ver .env.example)}
+      - ANTISPOOF=${ANTISPOOF:-0}
+      - FW_WAN_IP=203.0.113.20
+      - FW_LAN_IP=10.20.1.254
+      - FW_DMZ_IP=10.20.2.254
     volumes:
       - ./config/fw-b/lab.nft:/etc/nftables/lab.nft:ro
+      - ./config/fw-b/antispoof.nft:/etc/nftables/antispoof.nft:ro
       - ./config/fw-b/ipsec.conf:/etc/ipsec.conf:ro
       - ./config/entrypoint-fw.sh:/entrypoint.sh:ro
     command: ["sh", "/entrypoint.sh"]

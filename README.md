@@ -8,7 +8,7 @@
 
 - [x] Bloque 1: topología base (redes, contenedores, enrutamiento) / Base topology
 - [x] Bloque 2: política del firewall con nftables (denegar por defecto) / Default-deny firewall policy
-- [ ] Bloque 3: túnel IPsec entre sedes / Site-to-site IPsec tunnel
+- [x] Bloque 3: túnel IPsec entre sedes / Site-to-site IPsec tunnel
 - [ ] Bloque 4: pruebas con nmap y evidencias / nmap validation and evidence
 
 ## Topología / Topology
@@ -82,6 +82,24 @@ docker exec attacker ping -c 2 -W 2 203.0.113.10                                
 docker exec attacker nmap -Pn -p 22,80,443,500 203.0.113.10                                 # puertos "filtered"
 docker exec fw-a nft list chain inet lab_filter input                                       # contadores de descartes
 ```
+
+## Verificación del bloque 3 / Block 3 checks
+
+Antes de levantar el laboratorio: copia .env.example como .env (UTF-8) y pon una clave propia.
+
+```powershell
+docker exec fw-a ipsec statusall                                          # ESTABLISHED + INSTALLED, TUNNEL
+docker exec client-a ping -c 3 10.20.1.10                                 # LAN A -> LAN B por el túnel: OK
+docker exec client-a wget -q -O /dev/null -T 3 http://10.20.2.10          # LAN A -> web B: sin salida = OK
+docker exec client-b ping -c 2 -W 2 10.10.2.10                            # LAN B -> DMZ A por ICMP: debe FALLAR
+docker exec web-a ping -c 2 -W 2 10.20.1.10                               # DMZ A -> LAN B: debe FALLAR
+docker exec fw-a tcpdump -l -ni any -c 4 esp                              # en WAN solo ESP (cifrado)
+docker exec fw-a nft list chain inet lab_filter input                     # contadores de IKE y ESP
+```
+
+## Limitaciones conocidas / Known limitations
+- Las reglas filtran por IP; un paquete sin cifrar con origen falsificado de la otra sede no se distingue de uno que llegó por el túnel. Se demuestra y se corrige en el bloque 4 (anti-spoofing).
+- Túnel con PSK por simplicidad; en producción se prefieren certificados.
 
 ## Aprendizajes / Lessons learned
 

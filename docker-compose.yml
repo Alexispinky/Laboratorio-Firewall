@@ -1,4 +1,4 @@
-# Laboratorio de segmentación y firewall - Bloque 1: topología base
+# Laboratorio de segmentación y firewall - Bloques 1 a 3: topología, política y túnel IPsec
 # Dos sedes (A y B), cada una con zonas LAN y DMZ y un firewall Linux.
 # Aislamiento: las redes NO usan "internal: true" (Docker bloquea el enrutamiento
 # entre zonas a través de un firewall en contenedor). En su lugar se desactiva el
@@ -13,9 +13,13 @@ services:
     container_name: fw-a
     hostname: fw-a
     cap_add: [NET_ADMIN]
+    environment:
+      - IPSEC_PSK=${IPSEC_PSK:?Define IPSEC_PSK en el archivo .env (ver .env.example)}
     volumes:
       - ./config/fw-a/lab.nft:/etc/nftables/lab.nft:ro
-    command: ["sh", "-c", "while ip route del default 2>/dev/null; do :; done; nft -f /etc/nftables/lab.nft || echo 'ERROR: no se pudieron cargar las reglas'; exec sleep infinity"]
+      - ./config/fw-a/ipsec.conf:/etc/ipsec.conf:ro
+      - ./config/entrypoint-fw.sh:/entrypoint.sh:ro
+    command: ["sh", "/entrypoint.sh"]
     sysctls:
       net.ipv4.ip_forward: 1
     networks:
@@ -52,9 +56,13 @@ services:
     container_name: fw-b
     hostname: fw-b
     cap_add: [NET_ADMIN]
+    environment:
+      - IPSEC_PSK=${IPSEC_PSK:?Define IPSEC_PSK en el archivo .env (ver .env.example)}
     volumes:
       - ./config/fw-b/lab.nft:/etc/nftables/lab.nft:ro
-    command: ["sh", "-c", "while ip route del default 2>/dev/null; do :; done; nft -f /etc/nftables/lab.nft || echo 'ERROR: no se pudieron cargar las reglas'; exec sleep infinity"]
+      - ./config/fw-b/ipsec.conf:/etc/ipsec.conf:ro
+      - ./config/entrypoint-fw.sh:/entrypoint.sh:ro
+    command: ["sh", "/entrypoint.sh"]
     sysctls:
       net.ipv4.ip_forward: 1
     networks:

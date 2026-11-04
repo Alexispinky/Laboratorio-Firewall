@@ -4,3 +4,6 @@
 *.psk
 secrets/
 evidence/raw/
+
+# Variables de entorno con secretos (usa .env.example como plantilla)
+.env

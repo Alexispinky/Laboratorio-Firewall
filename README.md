@@ -9,7 +9,7 @@
 - [x] Bloque 1: topología base (redes, contenedores, enrutamiento) / Base topology
 - [x] Bloque 2: política del firewall con nftables (denegar por defecto) / Default-deny firewall policy
 - [x] Bloque 3: túnel IPsec entre sedes / Site-to-site IPsec tunnel
-- [ ] Bloque 4: pruebas con nmap y evidencias / nmap validation and evidence
+- [x] Bloque 4: pruebas con nmap y evidencias / nmap validation and evidence
 
 ## Topología / Topology
 
@@ -150,5 +150,4 @@ docker exec fw-a nft list chain inet lab_filter input
 ## Aprendizajes / Lessons learned
 
 - **Docker `internal: true` no sirve para enrutar entre zonas con un firewall en contenedor.** Con redes internas, el ping de la LAN a la DMZ a través de `fw-a` fallaba y `tcpdump` en el firewall no veía ni la petición: el paquete se descartaba antes de llegar, aunque el firewall no tenía reglas. Solución: redes normales con NAT desactivado y sin rutas por defecto en firewalls y atacante.
-- _TODO: completar al terminar cada bloque / fill in as each block is completed._
 

@@ -4,6 +4,11 @@
 
 **EN:** Reproducible Docker lab that recreates a two-site architecture with zones (LAN and DMZ), Linux firewalls (nftables) and an IPsec tunnel (strongSwan), validated with an attacker container (nmap). Everything runs isolated, with no internet access.
 
+## Requisitos
+- Docker Desktop
+- WSL2 
+- Soporte de XFRM
+
 ## Estado / Status
 
 - [x] Bloque 1: topología base (redes, contenedores, enrutamiento) / Base topology
@@ -151,3 +156,5 @@ docker exec fw-a nft list chain inet lab_filter input
 
 - **Docker `internal: true` no sirve para enrutar entre zonas con un firewall en contenedor.** Con redes internas, el ping de la LAN a la DMZ a través de `fw-a` fallaba y `tcpdump` en el firewall no veía ni la petición: el paquete se descartaba antes de llegar, aunque el firewall no tenía reglas. Solución: redes normales con NAT desactivado y sin rutas por defecto en firewalls y atacante.
 
+## Aviso de uso
+- Este es un laboratorio aislado y educativo, todas las pruebas realizadas son en un entorno propio.
